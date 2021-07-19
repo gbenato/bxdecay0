@@ -716,4 +716,64 @@ namespace bxdecay0_g4 {
     return;
   }
 
+// Same as GeneratePrimaries(), but returns the particle gun to an external primary generator instead
+std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimary()
+  {
+    if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Entering..." << '\n';
+    bxdecay0::event gendecay;
+    _pimpl_->get_decay0().shoot(_pimpl_->get_prng(), gendecay);
+    gendecay.set_time(0.0);
+    double particle_time = 0.0;
+    const auto & particles = gendecay.get_particles();
+    if (IsDebug()) std::cerr << "[debug] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Nb particles=" << particles.size() << '\n';
+
+    // Shoot the common vertex:
+    G4ThreeVector vertex(0.0, 0.0, 0.0);
+    if (HasVertexGenerator()) {
+      if (not _vertex_generator_->HasNextVertex()) {
+        G4RunManager::GetRunManager()->AbortRun();
+        G4Exception("bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: ",
+                    "InvalidArgument",
+                    RunMustBeAborted,
+                    "Vertex generator has no more vertex available! Abort run!");
+      }
+      _vertex_generator_->ShootVertex(vertex);  
+    }
+
+    std::vector<G4ParticleGun*>* guns = new std::vector<G4ParticleGun*>();
+    // Scan the list of BxDecay0 generated particles:
+    for (const auto & particle : particles) {
+	guns->push_back( new G4ParticleGun() );
+      // Particle type:
+      if (particle.is_electron()) {
+        guns->back()->SetParticleDefinition(G4Electron::ElectronDefinition());
+      } else if (particle.is_positron()) {
+        guns->back()->SetParticleDefinition(G4Positron::PositronDefinition());
+      } else if (particle.is_gamma()) {
+        guns->back()->SetParticleDefinition(G4Gamma::GammaDefinition());
+      } else if (particle.is_alpha()) {
+        guns->back()->SetParticleDefinition(G4Alpha::AlphaDefinition());
+      } else {
+        throw std::logic_error("bxdecay9_g4::PrimaryGeneratorAction::GeneratePrimary: Unsupported particle type!");
+      }
+      // Time:
+      if (particle.has_time()) {
+        particle_time += gendecay.get_time() * CLHEP::second;
+      }
+      guns->back()->SetParticleTime(particle_time);
+      // Momentum:
+      G4ThreeVector momentum(particle.get_px() * CLHEP::MeV / CLHEP::c_light,
+                             particle.get_py() * CLHEP::MeV / CLHEP::c_light,
+                             particle.get_pz() * CLHEP::MeV / CLHEP::c_light );
+      guns->back()->SetParticleMomentum(momentum);
+      // Vertex:
+      guns->back()->SetParticlePosition(vertex);
+      // Push the BxDecay0 generated  particle in the stack of Geant4 primaries:
+      //_particle_gun_->GeneratePrimaryVertex(event_);
+    }
+    if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Exiting..." << '\n';
+    
+    return guns;
+  }
+    
 } // end of namespace bxdecay0_g4 
