@@ -717,7 +717,7 @@ namespace bxdecay0_g4 {
   }
 
 // Same as GeneratePrimaries(), but returns the particle gun to an external primary generator instead
-std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimary()
+std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries()
   {
     if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Entering..." << '\n';
     bxdecay0::event gendecay;
