@@ -99,7 +99,8 @@ namespace bxdecay0_g4 {
     /// Main primaries generation method
     void GeneratePrimaries(G4Event *) override;
 
-    std::vector<G4ParticleGun*>* GeneratePrimaries();
+      void GeneratePrimaries( std::vector<G4ParticleGun*>* guns );
+      //std::vector<G4ParticleGun*>* GeneratePrimaries();
 
     G4ParticleGun * GetParticleGun();
     

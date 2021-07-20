@@ -712,12 +712,14 @@ namespace bxdecay0_g4 {
       // Push the BxDecay0 generated  particle in the stack of Geant4 primaries:
       _particle_gun_->GeneratePrimaryVertex(event_);
     }
+    
     if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimaries: Exiting..." << '\n';
     return;
   }
 
 // Same as GeneratePrimaries(), but returns the particle gun to an external primary generator instead
-std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries()
+//std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries( std::vector<G4ParticleGun*>* guns )
+void PrimaryGeneratorAction::GeneratePrimaries( std::vector<G4ParticleGun*>* guns )
   {
     if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Entering..." << '\n';
     bxdecay0::event gendecay;
@@ -729,6 +731,7 @@ std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries()
 
     // Shoot the common vertex:
     G4ThreeVector vertex(0.0, 0.0, 0.0);
+
     if (HasVertexGenerator()) {
       if (not _vertex_generator_->HasNextVertex()) {
         G4RunManager::GetRunManager()->AbortRun();
@@ -740,19 +743,19 @@ std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries()
       _vertex_generator_->ShootVertex(vertex);  
     }
 
-    std::vector<G4ParticleGun*>* guns = new std::vector<G4ParticleGun*>();
+    //std::vector<G4ParticleGun*>* guns = new std::vector<G4ParticleGun*>();
     // Scan the list of BxDecay0 generated particles:
     for (const auto & particle : particles) {
 	guns->push_back( new G4ParticleGun() );
       // Particle type:
       if (particle.is_electron()) {
-        guns->back()->SetParticleDefinition(G4Electron::ElectronDefinition());
+	  guns->back()->SetParticleDefinition(G4Electron::ElectronDefinition());
       } else if (particle.is_positron()) {
-        guns->back()->SetParticleDefinition(G4Positron::PositronDefinition());
+	  guns->back()->SetParticleDefinition(G4Positron::PositronDefinition());
       } else if (particle.is_gamma()) {
-        guns->back()->SetParticleDefinition(G4Gamma::GammaDefinition());
+	  guns->back()->SetParticleDefinition(G4Gamma::GammaDefinition());
       } else if (particle.is_alpha()) {
-        guns->back()->SetParticleDefinition(G4Alpha::AlphaDefinition());
+	  guns->back()->SetParticleDefinition(G4Alpha::AlphaDefinition());
       } else {
         throw std::logic_error("bxdecay9_g4::PrimaryGeneratorAction::GeneratePrimary: Unsupported particle type!");
       }
@@ -762,18 +765,34 @@ std::vector<G4ParticleGun*>* PrimaryGeneratorAction::GeneratePrimaries()
       }
       guns->back()->SetParticleTime(particle_time);
       // Momentum:
-      G4ThreeVector momentum(particle.get_px() * CLHEP::MeV / CLHEP::c_light,
-                             particle.get_py() * CLHEP::MeV / CLHEP::c_light,
-                             particle.get_pz() * CLHEP::MeV / CLHEP::c_light );
-      guns->back()->SetParticleMomentum(momentum);
+      G4ParticleMomentum momentum(particle.get_px() * CLHEP::MeV,
+				  particle.get_py() * CLHEP::MeV,
+				  particle.get_pz() * CLHEP::MeV );
+      G4double energy = sqrt( pow( particle.get_px(), 2. ) +
+			      pow( particle.get_py(), 2. ) +
+			      pow( particle.get_pz(), 2. ) +
+			      pow( guns->back()->GetParticleDefinition()->GetPDGMass() * CLHEP::MeV, 2. ) )
+	  - guns->back()->GetParticleDefinition()->GetPDGMass() * CLHEP::MeV;
+      G4double norm = sqrt( pow( particle.get_px(), 2. ) +
+			    pow( particle.get_py(), 2. ) +
+			    pow( particle.get_pz(), 2. ) );
+      G4ThreeVector direction( particle.get_px() / norm,
+			       particle.get_py() / norm,
+			       particle.get_pz() / norm );
+      guns->back()->SetParticleEnergy( energy );
+      guns->back()->SetParticleMomentumDirection( direction );
+      //guns->back()->SetParticleMomentum(momentum);
       // Vertex:
       guns->back()->SetParticlePosition(vertex);
       // Push the BxDecay0 generated  particle in the stack of Geant4 primaries:
       //_particle_gun_->GeneratePrimaryVertex(event_);
     }
     if (IsTrace()) std::cerr << "[trace] bxdecay0_g4::PrimaryGeneratorAction::GeneratePrimary: Exiting..." << '\n';
+
+    gendecay.reset();
     
-    return guns;
+    //return guns;
+    return;
   }
     
 } // end of namespace bxdecay0_g4 
